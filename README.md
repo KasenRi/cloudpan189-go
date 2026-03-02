@@ -1,3 +1,6 @@
+# 重要说明！！！
+本项目已经不再维护，感谢项目的各位共享者以及使用者对本项目的厚爱。
+
 # 关于
 天翼云盘CLI，基于GO语言实现。仿 Linux shell 文件处理命令的天翼云盘命令行客户端。
 
@@ -276,3 +279,4 @@ Windows
 本项目大量借鉴了以下相关项目的功能&成果   
 > [iikira/BaiduPCS-Go](https://github.com/iikira/BaiduPCS-Go)   
 > [Aruelius/cloud189](https://github.com/Aruelius/cloud189)   
+
