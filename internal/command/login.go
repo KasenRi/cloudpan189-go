@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,13 +15,12 @@ package command
 
 import (
 	"fmt"
+
 	"github.com/tickstep/cloudpan189-api/cloudpan"
 	"github.com/tickstep/cloudpan189-go/cmder"
 	"github.com/tickstep/cloudpan189-go/internal/config"
-	_ "github.com/tickstep/library-go/requester"
 	"github.com/urfave/cli"
 )
-
 
 func CmdLogin() cli.Command {
 	return cli.Command{
@@ -37,29 +36,44 @@ func CmdLogin() cli.Command {
 `,
 		Category: "天翼云盘账号",
 		Before:   cmder.ReloadConfigFunc, // 每次进行登录动作的时候需要调用刷新配置
-		After:    cmder.SaveConfigFunc, // 登录完成需要调用保存配置
+		After:    cmder.SaveConfigFunc,   // 登录完成需要调用保存配置
 		Action: func(c *cli.Context) error {
 			appToken := cloudpan.AppLoginToken{}
 			webToken := cloudpan.WebLoginToken{}
 			username := ""
-			passowrd := ""
+			password := ""
 			if c.IsSet("COOKIE_LOGIN_USER") {
 				webToken.CookieLoginUser = c.String("COOKIE_LOGIN_USER")
 			} else if c.NArg() == 0 {
 				var err error
-				username, passowrd, webToken, appToken, err = RunLogin(c.String("username"), c.String("password"))
+				username, password, webToken, appToken, err = RunLogin(c.String("username"), c.String("password"))
 				if err != nil {
 					fmt.Println(err)
 					return err
 				}
 			} else {
-				cli.ShowCommandHelp(c, c.Command.Name)
+				_ = cli.ShowCommandHelp(c, c.Command.Name)
 				return nil
 			}
-			cloudUser, _ := config.SetupUserByCookie(&webToken, &appToken)
+
+			cloudUser, setupErr := config.SetupUserByCookie(&webToken, &appToken)
+			if setupErr != nil || cloudUser == nil {
+				if config.IsUsableAppToken(appToken) {
+					fmt.Printf("注意: 无法获取完整网页用户信息，将使用 APP session 登录。原始错误: %v\n", setupErr)
+					cloudUser = config.SetupUserByAppTokenFallback(username, &webToken, &appToken)
+				}
+			}
+			if cloudUser == nil {
+				return fmt.Errorf("登录成功但初始化用户失败: %v", setupErr)
+			}
+
 			// save username / password
-			cloudUser.LoginUserName = config.EncryptString(username)
-			cloudUser.LoginUserPassword = config.EncryptString(passowrd)
+			if username != "" {
+				cloudUser.LoginUserName = config.EncryptString(username)
+			}
+			if password != "" {
+				cloudUser.LoginUserPassword = config.EncryptString(password)
+			}
 			config.Config.SetActiveUser(cloudUser)
 			fmt.Println("天翼帐号登录成功: ", cloudUser.Nickname)
 			return nil

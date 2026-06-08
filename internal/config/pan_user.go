@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,6 +15,9 @@ package config
 
 import (
 	"fmt"
+	"hash/fnv"
+	"strings"
+
 	"github.com/tickstep/cloudpan189-api/cloudpan"
 	"github.com/tickstep/cloudpan189-api/cloudpan/apierror"
 	"github.com/tickstep/library-go/expires/cachemap"
@@ -107,6 +110,58 @@ doLoginAct:
 	}
 
 	return u, nil
+}
+
+// IsUsableAppToken reports whether the token is enough for app API calls.
+func IsUsableAppToken(appToken cloudpan.AppLoginToken) bool {
+	return appToken.SessionKey != "" && appToken.SessionSecret != ""
+}
+
+// SetupUserByAppTokenFallback creates a user backed by app tokens only.
+//
+// 新版天翼登录有时不再能换取 COOKIE_LOGIN_USER，但 APP session 仍然可用。
+// 这里不伪造 COOKIE_LOGIN_USER，只保留真实 app token，并使用稳定的本地 UID
+// 避免 MaurUppi fork 中固定 UID=1 带来的多账号冲突。
+func SetupUserByAppTokenFallback(accountName string, webToken *cloudpan.WebLoginToken, appToken *cloudpan.AppLoginToken) *PanUser {
+	if appToken == nil || !IsUsableAppToken(*appToken) {
+		return nil
+	}
+	if webToken == nil {
+		webToken = &cloudpan.WebLoginToken{}
+	}
+
+	name := strings.TrimSpace(accountName)
+	if name == "" {
+		name = "AppTokenUser"
+	}
+
+	return &PanUser{
+		UID:                     fallbackUIDForAppToken(name, *appToken),
+		Nickname:                name,
+		AccountName:             name,
+		Sex:                     "U",
+		Workdir:                 "/",
+		WorkdirFileEntity:       *cloudpan.NewAppFileEntityForRootDir(),
+		FamilyWorkdir:           "/",
+		FamilyWorkdirFileEntity: *cloudpan.NewAppFileEntityForRootDir(),
+		WebToken:                *webToken,
+		AppToken:                *appToken,
+		panClient:               cloudpan.NewPanClient(*webToken, *appToken),
+	}
+}
+
+func fallbackUIDForAppToken(accountName string, appToken cloudpan.AppLoginToken) uint64 {
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(strings.ToLower(strings.TrimSpace(accountName))))
+	if accountName == "" {
+		_, _ = h.Write([]byte(appToken.SessionKey))
+	}
+	uid := h.Sum64()
+	if uid == 0 {
+		uid = 1
+	}
+	// Mark as local fallback UID and avoid colliding with real service UID space.
+	return uid | (uint64(1) << 63)
 }
 
 func (pu *PanUser) PanClient() *cloudpan.PanClient {

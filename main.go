@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,7 +47,7 @@ const (
 
 var (
 	// Version 版本号
-	Version = "v0.1.3"
+	Version = "v0.1.4"
 
 	historyFilePath = filepath.Join(config.GetConfigDir(), "cloud189_command_history.txt")
 
@@ -72,7 +72,7 @@ func init() {
 func checkLoginExpiredAndRelogin() {
 	cmder.ReloadConfigFunc(nil)
 	activeUser := config.Config.ActiveUser()
-	if activeUser == nil || activeUser.UID != 0 {
+	if activeUser == nil {
 		// maybe expired, try to login
 		cmder.TryLogin()
 	}
@@ -366,6 +366,9 @@ func main() {
 		// 登录账号 login
 		command.CmdLogin(),
 
+		// 扫码登录账号 qrlogin
+		command.CmdQrLogin(),
+
 		// 退出登录帐号 logout
 		command.CmdLogout(),
 
@@ -428,6 +431,8 @@ func main() {
 
 		// 下载文件/目录 download
 		command.CmdDownload(),
+
+		command.CmdWebdav(),
 
 		// 导出文件/目录元数据 export
 		command.CmdExport(),

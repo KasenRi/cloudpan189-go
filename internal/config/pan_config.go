@@ -326,14 +326,19 @@ func (c *PanConfig) ActiveUser() *PanUser {
 		for _, u := range c.UserList {
 			if u.UID == c.ActiveUID {
 				if u.PanClient() == nil {
-					// restore client
-					user, err := SetupUserByCookie(&u.WebToken, &u.AppToken)
-					if err != nil {
-						logger.Verboseln("setup user error")
-						return nil
+					// restore client. New Tianyi auth no longer always returns COOKIE_LOGIN_USER;
+					// if an app session token exists, build the app client directly.
+					if IsUsableAppToken(u.AppToken) {
+						u.panClient = cloudpan.NewPanClient(u.WebToken, u.AppToken)
+					} else {
+						user, err := SetupUserByCookie(&u.WebToken, &u.AppToken)
+						if err != nil {
+							logger.Verboseln("setup user error")
+							return nil
+						}
+						u.panClient = user.panClient
+						u.Nickname = user.Nickname
 					}
-					u.panClient = user.panClient
-					u.Nickname = user.Nickname
 
 					// check workdir valid or not
 					if u.ActiveFamilyId > 0 {
