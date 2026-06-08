@@ -1,7 +1,5 @@
-# 重要说明！！！
-本项目已经不再维护，感谢项目的各位共享者以及使用者对本项目的厚爱。
-
-# 本地维护版说明
+# 本维护版说明
+[原项目](https://github.com/tickstep/cloudpan189-go)已经不再维护，感谢前人的付出
 当前本地维护版在原版基础上保留 `qrlogin` 扫码登录和 `webdav` 服务，并吸收社区 fork 中较可靠的改进：
 1. 升级 `github.com/tickstep/library-go` 到 `v0.1.3`，从依赖层解决 Go 1.23+ `go:linkname` / `runtime.rawbyteslice` 兼容问题。
 2. 增强账号密码登录的错误处理：支持重试、panic recovery、明确错误码和错误信息。
